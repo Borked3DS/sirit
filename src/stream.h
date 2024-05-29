@@ -156,7 +156,9 @@ public:
     }
 
     Stream& operator<<(Id value) {
-        assert(value.value != 0);
+        if (value.value == 0) {
+            std::abort();
+        }
         return *this << value.value;
     }
 
