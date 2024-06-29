@@ -256,6 +256,12 @@ public:
      */
     Id OpPhi(Id result_type, std::span<const Id> operands);
 
+    template <typename... Ts>
+    requires(...&& std::is_convertible_v<Ts, Id>) Id
+        OpPhi(Id result_type, Ts&&... operands) {
+        return OpPhi(result_type, std::span<const Id>({operands...}));
+    }
+    
     /**
      * The SSA phi function. This instruction will be revisited when patching phi nodes.
      *
@@ -364,6 +370,17 @@ public:
 
     /// Make a copy of a vector, with a single, variably selected, component modified.
     Id OpVectorInsertDynamic(Id result_type, Id vector, Id component, Id index);
+
+    /// Select arbitrary components from two vectors to make a new vector.
+    Id OpVectorShuffle(Id result_type, Id vector_1, Id vector_2, std::span<const Literal> components);
+
+    /// Select arbitrary components from two vectors to make a new vector.
+    template <typename... Ts>
+    requires(...&& std::is_convertible_v<Ts, Literal>) Id
+        OpVectorShuffle(Id result_type, Id vector_1, Id vector_2, Ts&&... components) {
+        const Literal stack_literals[] = {std::forward<Ts>(components)...};
+        return OpVectorShuffle(result_type, vector_1, vector_2, std::span<const Literal>{stack_literals});
+    }
 
     /// Make a copy of a composite object, while modifying one part of it.
     Id OpCompositeInsert(Id result_type, Id object, Id composite,
@@ -686,6 +703,12 @@ public:
     /// Result is the unsigned integer addition of Operand 1 and Operand 2, including its carry.
     Id OpIAddCarry(Id result_type, Id operand_1, Id operand_2);
 
+    /// Multiplication of floating-point vector Operand 1 with scalar Operand 2.
+    Id OpVectorTimesScalar(Id result_type, Id operand_1, Id operand_2);
+
+    /// Dot product of floating-point vector Operand 1 and vector Operand 2.
+    Id OpDot(Id result_type, Id operand_1, Id operand_2);
+
     // Extensions
 
     /// Execute an instruction in an imported set of extended instructions.
@@ -780,6 +803,10 @@ public:
     /// integers.
     Id OpSMin(Id result_type, Id x, Id y);
 
+    /// Result is y if y < x, either x or y if both x and y are zeros, otherwise x. If one operand is a NaN, the other
+    /// operand is the result. If both operands are NaN, the result is a NaN.
+    Id OpNMin(Id result_type, Id x, Id y);
+
     /// Result is y if x < y; otherwise result is x. Which operand is the result is undefined if one
     /// of the operands is a NaN.
     Id OpFMax(Id result_type, Id x, Id y);
@@ -791,6 +818,10 @@ public:
     /// Result is y if x < y; otherwise result is x, where x and y are interpreted as signed
     /// integers.
     Id OpSMax(Id result_type, Id x, Id y);
+
+    /// Result is y if x < y, either x or y if both x and y are zeros, otherwise x. If one operand is a NaN, the other
+    /// operand is the result. If both operands are NaN, the result is a NaN.
+    Id OpNMax(Id result_type, Id x, Id y);
 
     /// Result is min(max(x, minVal), maxVal). Result is undefined if minVal > maxVal.The semantics
     /// used by min() and max() are those of FMin and FMax.
@@ -836,6 +867,18 @@ public:
     /// Result is the value of the input interpolant variable sampled at an offset from the center
     /// of the pixel specified by offset.
     Id OpInterpolateAtOffset(Id result_type, Id interpolant, Id offset);
+
+    /// Result is the vector in the same direction as x but with a length of 1.
+    Id OpNormalize(Id result_type, Id x);
+
+    /// Result is the cross product of x and y.
+    Id OpCross(Id result_type, Id x, Id y);
+
+    /// Result is the length of vector x.
+    Id OpLength(Id result_type, Id x);
+
+    /// Result is the linear blend of x and y i.e x * (1 - a) + y * a
+    Id OpFMix(Id result_type, Id x, Id y, Id a);
 
     // Derivatives
 
@@ -1200,6 +1243,9 @@ public:
     /// active and the Predicate for that invocation evaluated to true;
     /// otherwise, it is set to zero.
     Id OpGroupNonUniformBallot(Id result_type, Id scope, Id predicate);
+
+    /// Result is the Value of the invocation within the quad with a quad index equal to Index.
+    Id OpGroupNonUniformQuadBroadcast(Id result_type, Id scope, Id value, Id index);
 
     // Atomic
 
