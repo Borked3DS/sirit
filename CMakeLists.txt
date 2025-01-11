@@ -10,6 +10,16 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   set(MASTER_PROJECT ON)
 endif()
 
+# Enable link time optimization if supported by compiler
+include(CheckIPOSupported)
+check_ipo_supported(RESULT result)
+if(result)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
+# Set position independent code
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # Sirit project options
 option(SIRIT_TESTS "Build tests" OFF)
 option(SIRIT_USE_SYSTEM_SPIRV_HEADERS "Use system SPIR-V headers" OFF)
