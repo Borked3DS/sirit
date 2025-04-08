@@ -261,7 +261,7 @@ public:
         OpPhi(Id result_type, Ts&&... operands) {
         return OpPhi(result_type, std::span<const Id>({operands...}));
     }
-    
+
     /**
      * The SSA phi function. This instruction will be revisited when patching phi nodes.
      *
@@ -676,6 +676,12 @@ public:
     /// Floating-point multiplication of Operand 1 and Operand 2.
     Id OpFMul(Id result_type, Id operand_1, Id operand_2);
 
+    /// Full signed interger multiplication of Operand 1 and Operand 2.
+    Id OpSMulExtended(Id result_type, Id operand_1, Id operand_2);
+
+    /// Full unsigned interger multiplication of Operand 1 and Operand 2.
+    Id OpUMulExtended(Id result_type, Id operand_1, Id operand_2);
+
     /// Unsigned-integer division of Operand 1 divided by Operand 2.
     Id OpUDiv(Id result_type, Id operand_1, Id operand_2);
 
@@ -791,6 +797,9 @@ public:
     /// Result is the reciprocal of sqrt x. Result is undefined if x <= 0.
     Id OpInverseSqrt(Id result_type, Id x);
 
+    /// Result is a floating-point number from x and the corresponding integral exponent of two in exp.
+    Id OpLdexp(Id result_type, Id x, Id exp);
+
     /// Result is y if y < x; otherwise result is x. Which operand is the result is undefined if one
     /// of the operands is a NaN.
     Id OpFMin(Id result_type, Id x, Id y);
@@ -838,14 +847,54 @@ public:
     /// Computes a * b + c.
     Id OpFma(Id result_type, Id a, Id b, Id c);
 
+    /// Result is a structure containing x split into a floating-point significand in the range
+    /// (-1.0, 0.5] or [0.5, 1.0) and an integral exponent of 2, such that: x = significand * 2^exponent
+    Id OpFrexpStruct(Id result_type, Id x);
+
     /// Result is the unsigned integer obtained by converting the components of a two-component
     /// floating-point vector to the 16-bit OpTypeFloat, and then packing these two 16-bit integers
     /// into a 32-bit unsigned integer.
     Id OpPackHalf2x16(Id result_type, Id v);
 
     /// Result is the two-component floating-point vector with components obtained by unpacking a
-    /// 32-bit unsigned integer into a pair of 16-bit values.
+    /// 32-bit unsigned integer into a pair of floating-point 16-bit values.
     Id OpUnpackHalf2x16(Id result_type, Id v);
+
+    /// Result is the unsigned integer obtained by converting the components of a two-component
+    /// unsigned normalized floating-point vector to 16-bit integer values, and then packing these
+    /// two 16-bit integers into a 32-bit unsigned integer.
+    Id OpPackUnorm2x16(Id result_type, Id v);
+
+    /// Result is the two-component floating-point vector with components obtained by unpacking a
+    /// 32-bit unsigned integer into a pair of unsigned normalized 16-bit values.
+    Id OpUnpackUnorm2x16(Id result_type, Id v);
+
+    /// Result is the unsigned integer obtained by converting the components of a two-component
+    /// signed normalized floating-point vector to 16-bit integer values, and then packing these
+    /// two 16-bit integers into a 32-bit unsigned integer.
+    Id OpPackSnorm2x16(Id result_type, Id v);
+
+    /// Result is the two-component floating-point vector with components obtained by unpacking a
+    /// 32-bit unsigned integer into a pair of signed normalized 16-bit values.
+    Id OpUnpackSnorm2x16(Id result_type, Id v);
+
+    /// Result is the unsigned integer obtained by converting the components of a four-component
+    /// unsigned normalized floating-point vector to 8-bit integer values, and then packing these
+    /// four 8-bit integers into a 32-bit unsigned integer.
+    Id OpPackUnorm4x8(Id result_type, Id v);
+
+    /// Result is the four-component floating-point vector with components obtained by unpacking a
+    /// 32-bit unsigned integer into four unsigned normalized 8-bit values.
+    Id OpUnpackUnorm4x8(Id result_type, Id v);
+
+    /// Result is the unsigned integer obtained by converting the components of a four-component
+    /// signed normalized floating-point vector to 8-bit integer values, and then packing these
+    /// four 8-bit integers into a 32-bit unsigned integer.
+    Id OpPackSnorm4x8(Id result_type, Id v);
+
+    /// Result is the four-component floating-point vector with components obtained by unpacking a
+    /// 32-bit unsigned integer into four signed normalized 8-bit values.
+    Id OpUnpackSnorm4x8(Id result_type, Id v);
 
     /// Integer least-significant bit.
     Id OpFindILsb(Id result_type, Id value);
@@ -1349,8 +1398,28 @@ public:
     /// 3) store the New Value back through Pointer.
     Id OpAtomicXor(Id result_type, Id pointer, Id memory, Id semantics, Id value);
 
+    // Print a message for vulkan layers to use, e.g. renderdoc
+    // Usage is like C printf
+    Id OpDebugPrintf(Id fmt, std::span<const Id> fmt_args);
+
+    /// Returns a two-component floating point vector that represents the 2D texture coordinates
+    /// that would be used for accessing the selected cube map face for the given cube map texture
+    /// coordinates given as a parameter.
+    Id OpCubeFaceCoordAMD(Id result_type, Id cube_coords);
+
+    /// Returns a single floating point value that represents the index of the cube map face that
+    /// would be accessed by texture lookup functions for the cube map texture coordinates given
+    /// as parameter.
+    Id OpCubeFaceIndexAMD(Id result_type, Id cube_coords);
+
+    /// Returns a 64-bit value representing the current execution clock as seen by the shader
+    /// processor.
+    Id OpTimeAMD(Id result_type);
+
 private:
     Id GetGLSLstd450();
+    Id GetNonSemanticDebugPrintf();
+    Id GetAmdGcnShader();
 
     std::uint32_t version{};
     std::uint32_t bound{};
@@ -1358,6 +1427,8 @@ private:
     std::unordered_set<std::string> extensions;
     std::unordered_set<spv::Capability> capabilities;
     std::optional<Id> glsl_std_450;
+    std::optional<Id> non_semantic_debug_printf;
+    std::optional<Id> amd_gcn_shader;
 
     spv::AddressingModel addressing_model{spv::AddressingModel::Logical};
     spv::MemoryModel memory_model{spv::MemoryModel::GLSL450};
@@ -1366,6 +1437,7 @@ private:
     std::unique_ptr<Stream> entry_points;
     std::unique_ptr<Stream> execution_modes;
     std::unique_ptr<Stream> debug;
+    std::unique_ptr<Stream> debug_name;
     std::unique_ptr<Stream> annotations;
     std::unique_ptr<Declarations> declarations;
     std::unique_ptr<Stream> global_variables;

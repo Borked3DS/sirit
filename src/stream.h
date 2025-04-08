@@ -63,7 +63,7 @@ inline void InsertStringView(std::vector<u32>& words, size_t& insert_index,
 
 class Stream {
     friend Declarations;
-
+    static constexpr std::size_t GROW_STEP = 1024;
 public:
     explicit Stream(u32* bound_) : bound{bound_} {}
 

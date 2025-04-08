@@ -4,7 +4,10 @@
  * 3-Clause BSD License
  */
 
+#include <iterator>
+#include <spirv/unified1/AMD_gcn_shader.h>
 #include <spirv/unified1/GLSL.std.450.h>
+#include <spirv/unified1/NonSemanticDebugPrintf.h>
 
 #include "sirit/sirit.h"
 
@@ -54,6 +57,7 @@ DEFINE_UNARY(OpExp2, GLSLstd450Exp2)
 DEFINE_UNARY(OpLog2, GLSLstd450Log2)
 DEFINE_UNARY(OpSqrt, GLSLstd450Sqrt)
 DEFINE_UNARY(OpInverseSqrt, GLSLstd450InverseSqrt)
+DEFINE_BINARY(OpLdexp, GLSLstd450Ldexp)
 DEFINE_BINARY(OpFMin, GLSLstd450FMin)
 DEFINE_BINARY(OpUMin, GLSLstd450UMin)
 DEFINE_BINARY(OpSMin, GLSLstd450SMin)
@@ -66,8 +70,17 @@ DEFINE_TRINARY(OpFClamp, GLSLstd450FClamp)
 DEFINE_TRINARY(OpUClamp, GLSLstd450UClamp)
 DEFINE_TRINARY(OpSClamp, GLSLstd450SClamp)
 DEFINE_TRINARY(OpFma, GLSLstd450Fma)
+DEFINE_UNARY(OpFrexpStruct, GLSLstd450FrexpStruct)
 DEFINE_UNARY(OpPackHalf2x16, GLSLstd450PackHalf2x16)
 DEFINE_UNARY(OpUnpackHalf2x16, GLSLstd450UnpackHalf2x16)
+DEFINE_UNARY(OpPackUnorm2x16, GLSLstd450PackUnorm2x16)
+DEFINE_UNARY(OpUnpackUnorm2x16, GLSLstd450UnpackUnorm2x16)
+DEFINE_UNARY(OpPackSnorm2x16, GLSLstd450PackSnorm2x16)
+DEFINE_UNARY(OpUnpackSnorm2x16, GLSLstd450UnpackSnorm2x16)
+DEFINE_UNARY(OpPackUnorm4x8, GLSLstd450PackUnorm4x8)
+DEFINE_UNARY(OpUnpackUnorm4x8, GLSLstd450UnpackUnorm4x8)
+DEFINE_UNARY(OpPackSnorm4x8, GLSLstd450PackSnorm4x8)
+DEFINE_UNARY(OpUnpackSnorm4x8, GLSLstd450UnpackSnorm4x8)
 DEFINE_UNARY(OpFindILsb, GLSLstd450FindILsb)
 DEFINE_UNARY(OpFindSMsb, GLSLstd450FindSMsb)
 DEFINE_UNARY(OpFindUMsb, GLSLstd450FindUMsb)
@@ -78,5 +91,25 @@ DEFINE_UNARY(OpNormalize, GLSLstd450Normalize)
 DEFINE_BINARY(OpCross, GLSLstd450Cross)
 DEFINE_UNARY(OpLength, GLSLstd450Length)
 DEFINE_TRINARY(OpFMix, GLSLstd450FMix)
+
+Id Module::OpDebugPrintf(Id fmt, std::span<const Id> fmt_args) {
+    std::vector<Id> operands;
+    operands.push_back(fmt);
+    std::copy(fmt_args.begin(), fmt_args.end(), std::back_inserter(operands));
+    return OpExtInst(TypeVoid(), GetNonSemanticDebugPrintf(), NonSemanticDebugPrintfDebugPrintf,
+                     operands);
+}
+
+Id Module::OpCubeFaceCoordAMD(Id result_type, Id cube_coords) {
+    return OpExtInst(result_type, GetAmdGcnShader(), AMD_gcn_shaderCubeFaceCoordAMD, cube_coords);
+}
+
+Id Module::OpCubeFaceIndexAMD(Id result_type, Id cube_coords) {
+    return OpExtInst(result_type, GetAmdGcnShader(), AMD_gcn_shaderCubeFaceIndexAMD, cube_coords);
+}
+
+Id Module::OpTimeAMD(Id result_type) {
+    return OpExtInst(result_type, GetAmdGcnShader(), AMD_gcn_shaderTimeAMD);
+}
 
 } // namespace Sirit

@@ -1,6 +1,6 @@
 # This file has been adapted from dynarmic
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 project(sirit CXX)
 
 # Determine if we're built as a subproject (using add_subdirectory)
@@ -9,6 +9,16 @@ set(MASTER_PROJECT OFF)
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   set(MASTER_PROJECT ON)
 endif()
+
+# Enable link time optimization if supported by compiler
+include(CheckIPOSupported)
+check_ipo_supported(RESULT result)
+if(result)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
+# Set position independent code
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Sirit project options
 option(SIRIT_TESTS "Build tests" OFF)
@@ -21,7 +31,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Set hard requirements for C++
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
